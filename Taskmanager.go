@@ -2,18 +2,33 @@ package main
 
 import (
 	"fmt"
+	"gorm.io/driver/sqlite"
+	"gorm.io/gorm"
 	"os"
 	"time"
 )
 
 type Task struct {
-	User      string
+	Id        int32  `gorm:"primarykey"`
+	User      string `gorm:"not null"`
 	TaskName  string
 	Date      time.Time
 	Completed bool
 }
 
-func AddFunc(DB *map[string]Task) {
+func initDB() *gorm.DB {
+	db, err := gorm.Open(sqlite.Open("taskmanager_db"), &gorm.Config{})
+	if err != nil {
+		fmt.Println("can not open the DB", err)
+	}
+	err = db.AutoMigrate(&Task{})
+	if err != nil {
+		fmt.Println("Cannot create the db")
+	}
+	return db
+}
+
+func AddFunc(db *gorm.DB) {
 
 	var taskname string
 	var user string
@@ -28,22 +43,28 @@ func AddFunc(DB *map[string]Task) {
 		Date:      date,
 		Completed: false,
 	}
-	(*DB)[user] = task
+	result := db.Create(&task)
+	if result.Error != nil {
+		fmt.Println("error adding task")
+	}
+	fmt.Println("Task added succesfully")
 }
-func Viewtask(DB *map[string]Task) {
-	for key, item := range *DB {
-		fmt.Printf("Key: %s\n", key) // Print the map key (optional)
-		fmt.Println("Task Name:", item.TaskName)
-		fmt.Println("Date:", item.Date)
-		fmt.Println("Completed:", item.Completed)
-		fmt.Println("---------------------------")
-
+func Viewtask(db *gorm.DB) {
+	var tasks []Task
+	result := db.Find(&tasks)
+	if result.Error != nil {
+		fmt.Println("Cannot fetch the data")
+	}
+	fmt.Println("=== All Tasks ===")
+	for _, task := range tasks {
+		fmt.Println(task.Id, task.TaskName, task.Date)
 	}
 
 }
 
 func main() {
-	m := make(map[string]Task)
+	db := initDB()
+	//m := make(map[string]Task)
 
 	fmt.Println("Hello")
 	for {
@@ -55,9 +76,9 @@ func main() {
 		fmt.Scanln(&userInput)
 		switch userInput {
 		case "1":
-			AddFunc(&m)
+			AddFunc(db)
 		case "2":
-			Viewtask(&m)
+			Viewtask(db)
 		case "3":
 			os.Exit(0)
 		default:
