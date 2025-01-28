@@ -59,7 +59,25 @@ func Viewtask(db *gorm.DB) {
 	for _, task := range tasks {
 		fmt.Println(task.Id, task.TaskName, task.Date)
 	}
+}
+func Deletetask(db *gorm.DB, todelId int) {
+	var task Task
 
+	_ = db.First(&task, todelId)
+	//if err != nil {
+	//fmt.Println("Error in finding task")
+	//}
+	_ = db.Delete(&task)
+	//if err != nil {
+	//fmt.Println("Error in deleting the task")
+	//}
+	fmt.Println("Task deleted succesfully", task)
+
+}
+func Search(db *gorm.DB, taskname string) {
+	var task Task
+	_ = db.First(&task)
+	fmt.Println("Task Found", task)
 }
 
 func main() {
@@ -72,6 +90,8 @@ func main() {
 		fmt.Println("1> Add task")
 		fmt.Println("2> View Task")
 		fmt.Println("3> Quit")
+		fmt.Println("4> Delete Task")
+		fmt.Println("5> Search Task")
 		var userInput string
 		fmt.Scanln(&userInput)
 		switch userInput {
@@ -81,6 +101,16 @@ func main() {
 			Viewtask(db)
 		case "3":
 			os.Exit(0)
+		case "4":
+			var todel int
+			fmt.Println("Enter the task Id to delete")
+			fmt.Scan(&todel)
+			Deletetask(db, todel)
+		case "5":
+			fmt.Println("Task you want to Search")
+			var taskname string
+			fmt.Scan(&taskname)
+			Search(db, taskname)
 		default:
 			fmt.Println("Select a correct Choice")
 		}
