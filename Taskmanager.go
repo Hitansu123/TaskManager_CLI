@@ -2,10 +2,12 @@ package main
 
 import (
 	"fmt"
-	"gorm.io/driver/sqlite"
-	"gorm.io/gorm"
+	"log"
 	"os"
 	"time"
+
+	"gorm.io/driver/sqlite"
+	"gorm.io/gorm"
 )
 
 type Task struct {
@@ -26,6 +28,14 @@ func initDB() *gorm.DB {
 		fmt.Println("Cannot create the db")
 	}
 	return db
+}
+func UsernameExists(db *gorm.DB, username string) bool {
+	var task Task
+	ok := db.Where("User=?", username).First(&task)
+	if ok.RowsAffected > 0 {
+		return true
+	}
+	return false
 }
 
 func AddFunc(db *gorm.DB) {
@@ -49,15 +59,19 @@ func AddFunc(db *gorm.DB) {
 	}
 	fmt.Println("Task added succesfully")
 }
-func Viewtask(db *gorm.DB) {
-	var tasks []Task
-	result := db.Find(&tasks)
-	if result.Error != nil {
-		fmt.Println("Cannot fetch the data")
-	}
-	fmt.Println("=== All Tasks ===")
-	for _, task := range tasks {
-		fmt.Println(task.Id, task.TaskName, task.Date)
+func Viewtask(db *gorm.DB, username string) {
+	if UsernameExists(db, username) {
+		var tasks []Task
+		result := db.Where("User=?", username).Find(&tasks)
+		if result.Error != nil {
+			fmt.Println("Cannot fetch the data")
+		}
+		fmt.Println("=== All Tasks ===")
+		for _, task := range tasks {
+			fmt.Println(task.Id, task.TaskName, task.Date)
+		}
+	} else {
+		log.Fatal("Cannot find the username")
 	}
 }
 func Deletetask(db *gorm.DB, todelId int) {
@@ -98,7 +112,10 @@ func main() {
 		case "1":
 			AddFunc(db)
 		case "2":
-			Viewtask(db)
+			var username string
+			fmt.Println("Enter your username")
+			fmt.Scan(&username)
+			Viewtask(db, username)
 		case "3":
 			os.Exit(0)
 		case "4":
