@@ -13,7 +13,7 @@ import (
 type Task struct {
 	Id        int32  `gorm:"primarykey"`
 	User      string `gorm:"not null"`
-	TaskName  string
+	TaskName  string `gorm:"column:task_name"`
 	Date      time.Time
 	Completed bool
 }
@@ -90,8 +90,12 @@ func Deletetask(db *gorm.DB, todelId int) {
 }
 func Search(db *gorm.DB, taskname string) {
 	var task Task
-	_ = db.First(&task)
-	fmt.Println("Task Found", task)
+	found := db.Where("task_name=?", &taskname).First(&task)
+	if found.RowsAffected > 0 {
+		fmt.Println("Task Found", task)
+	} else {
+		log.Fatal("No record found")
+	}
 }
 
 func main() {
