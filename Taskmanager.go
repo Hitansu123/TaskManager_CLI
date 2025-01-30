@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"sync"
 	"time"
 
 	"gorm.io/driver/sqlite"
@@ -11,10 +12,10 @@ import (
 )
 
 type Task struct {
-	Id        int32  `gorm:"primarykey"`
-	User      string `gorm:"not null"`
-	TaskName  string `gorm:"column:task_name"`
-	Date      time.Time
+	Id        int32     `gorm:"primarykey"`
+	User      string    `gorm:"not null"`
+	TaskName  string    `gorm:"column:task_name"`
+	Date      time.Time `gorm:"column:date"`
 	Completed bool
 }
 
@@ -38,8 +39,9 @@ func UsernameExists(db *gorm.DB, username string) bool {
 	return false
 }
 
-func AddFunc(db *gorm.DB) {
+func AddFunc(db *gorm.DB, w *sync.WaitGroup) {
 
+	defer w.Done()
 	var taskname string
 	var user string
 	fmt.Println("Enter TaskName")
@@ -59,7 +61,8 @@ func AddFunc(db *gorm.DB) {
 	}
 	fmt.Println("Task added succesfully")
 }
-func Viewtask(db *gorm.DB, username string) {
+func Viewtask(db *gorm.DB, username string, w *sync.WaitGroup) {
+	defer w.Done()
 	if UsernameExists(db, username) {
 		var tasks []Task
 		result := db.Where("User=?", username).Find(&tasks)
@@ -68,10 +71,29 @@ func Viewtask(db *gorm.DB, username string) {
 		}
 		fmt.Println("=== All Tasks ===")
 		for _, task := range tasks {
-			fmt.Println(task.Id, task.TaskName, task.Date)
+			fmt.Println(task.User, task.TaskName, task.Date)
 		}
 	} else {
 		log.Fatal("Cannot find the username")
+	}
+}
+func Update(db *gorm.DB) {
+	var tasks Task
+	var username string
+	var taskname string
+	fmt.Println("Enter username")
+	fmt.Scan(&username)
+	fmt.Println("Enter taskname")
+	fmt.Scan(&taskname)
+	tochange := db.Where("User=? AND task_name=?", username, taskname).Find(&tasks)
+	if tochange.RowsAffected > 0 {
+		var newTaskname string
+		fmt.Println("Enter new taskname")
+		fmt.Scan(&newTaskname)
+		db.Model(&tasks).Update("task_name", newTaskname)
+		fmt.Println("succesfully Updated")
+	} else {
+		log.Fatal("User not avilable")
 	}
 }
 func Deletetask(db *gorm.DB, todelId int) {
@@ -99,6 +121,7 @@ func Search(db *gorm.DB, taskname string) {
 }
 
 func main() {
+	var wg sync.WaitGroup
 	db := initDB()
 	//m := make(map[string]Task)
 
@@ -110,16 +133,19 @@ func main() {
 		fmt.Println("3> Quit")
 		fmt.Println("4> Delete Task")
 		fmt.Println("5> Search Task")
+		fmt.Println("6> Update Exsisting task")
 		var userInput string
 		fmt.Scanln(&userInput)
 		switch userInput {
 		case "1":
-			AddFunc(db)
+			wg.Add(1)
+			go AddFunc(db, &wg)
 		case "2":
+			wg.Add(1)
 			var username string
 			fmt.Println("Enter your username")
 			fmt.Scan(&username)
-			Viewtask(db, username)
+			Viewtask(db, username, &wg)
 		case "3":
 			os.Exit(0)
 		case "4":
@@ -132,8 +158,11 @@ func main() {
 			var taskname string
 			fmt.Scan(&taskname)
 			Search(db, taskname)
+		case "6":
+			Update(db)
 		default:
 			fmt.Println("Select a correct Choice")
 		}
+		wg.Wait()
 	}
 }
