@@ -150,6 +150,7 @@ func main() {
 		fmt.Println("5> SEARCH TASK")
 		fmt.Println("6> UPDATE EXSISTING TASK")
 		fmt.Println("7> MARK TASK AS COMPLETED")
+		fmt.Println("8> SORT TASKS PRIORITY WISE")
 		var userInput string
 		fmt.Scanln(&userInput)
 		switch userInput {
@@ -176,10 +177,28 @@ func main() {
 		case "7":
 			wg.Add(1)
 			go MarkComplete(db, &wg)
+		case "8":
+			SortbasedPriority(db)
 		default:
 			fmt.Println("Select a correct Choice")
 		}
 		wg.Wait()
+	}
+}
+
+func SortbasedPriority(db *gorm.DB) {
+	var tasks []Task
+	var username string
+	var priority string
+	fmt.Println("Enter the Username")
+	fmt.Scan(&username)
+	fmt.Println("Enter the priority(high/low)")
+	fmt.Scan(&priority)
+	found := db.Find(&tasks, "User=? AND Priority=?", username, priority)
+	if found.RowsAffected > 0 {
+		fmt.Println(tasks)
+	} else {
+		log.Error("No user found")
 	}
 }
 
