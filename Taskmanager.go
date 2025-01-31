@@ -2,11 +2,11 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"os"
 	"sync"
 	"time"
 
+	"github.com/charmbracelet/log"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )
@@ -26,7 +26,8 @@ func initDB() *gorm.DB {
 	}
 	err = db.AutoMigrate(&Task{})
 	if err != nil {
-		fmt.Println("Cannot create the db")
+		log.Fatal("Cannot create the db")
+		//fmt.Println("Cannot create the db")
 	}
 	return db
 }
@@ -57,7 +58,7 @@ func AddFunc(db *gorm.DB, w *sync.WaitGroup) {
 	}
 	result := db.Create(&task)
 	if result.Error != nil {
-		fmt.Println("error adding task")
+		log.Fatal("error adding task")
 	}
 	fmt.Println("Task added succesfully")
 }
@@ -74,7 +75,7 @@ func Viewtask(db *gorm.DB, username string, w *sync.WaitGroup) {
 			fmt.Println(task.User, task.TaskName, task.Date)
 		}
 	} else {
-		log.Fatal("Cannot find the username")
+		log.Error("Cannot find the username")
 	}
 }
 func Update(db *gorm.DB) {
@@ -96,6 +97,7 @@ func Update(db *gorm.DB) {
 		log.Fatal("User not avilable")
 	}
 }
+
 func Deletetask(db *gorm.DB, todelId int) {
 	var task Task
 
