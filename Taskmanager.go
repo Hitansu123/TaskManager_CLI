@@ -16,7 +16,8 @@ type Task struct {
 	User      string    `gorm:"not null"`
 	TaskName  string    `gorm:"column:task_name"`
 	Date      time.Time `gorm:"column:date"`
-	Completed bool
+	Completed bool      `gorm:"column:Completed"`
+	Priority  string    `gorm:"column:priority"`
 }
 
 func initDB() *gorm.DB {
@@ -40,25 +41,29 @@ func UsernameExists(db *gorm.DB, username string) bool {
 	return false
 }
 
-func AddFunc(db *gorm.DB, w *sync.WaitGroup) {
+func AddFunc(db *gorm.DB, w *sync.WaitGroup) { //Adding task into the Database
 
 	defer w.Done()
 	var taskname string
 	var user string
+	var priority string
 	fmt.Println("Enter TaskName")
 	fmt.Scanln(&taskname)
 	fmt.Println("Enter username")
 	fmt.Scanln(&user)
+	fmt.Println("Set Priority (low/high)")
+	fmt.Scan(&priority)
 	date := time.Now()
 	task := Task{
 		User:      user,
 		TaskName:  taskname,
 		Date:      date,
 		Completed: false,
+		Priority:  priority,
 	}
 	result := db.Create(&task)
 	if result.Error != nil {
-		log.Fatal("error adding task")
+		log.Error("error adding task")
 	}
 	fmt.Println("Task added succesfully")
 }
@@ -68,11 +73,12 @@ func Viewtask(db *gorm.DB, username string, w *sync.WaitGroup) {
 		var tasks []Task
 		result := db.Where("User=?", username).Find(&tasks)
 		if result.Error != nil {
-			fmt.Println("Cannot fetch the data")
+			log.Error("Cannot fetch the data")
 		}
 		fmt.Println("=== All Tasks ===")
 		for _, task := range tasks {
-			fmt.Println(task.User, task.TaskName, task.Date)
+			output := fmt.Sprintf("Username:= %v, TaskName:= %v, Completed:= %v, TaskPriority:= %v, Date:= %v", task.User, task.TaskName, task.Completed, task.Priority, task.Date)
+			fmt.Println(output)
 		}
 	} else {
 		log.Error("Cannot find the username")
@@ -136,6 +142,7 @@ func main() {
 		fmt.Println("4> Delete Task")
 		fmt.Println("5> Search Task")
 		fmt.Println("6> Update Exsisting task")
+		fmt.Println("7> Mark Task as Completed")
 		var userInput string
 		fmt.Scanln(&userInput)
 		switch userInput {
@@ -162,9 +169,30 @@ func main() {
 			Search(db, taskname)
 		case "6":
 			Update(db)
+		case "7":
+			wg.Add(1)
+			go MarkComplete(db, &wg)
 		default:
 			fmt.Println("Select a correct Choice")
 		}
 		wg.Wait()
+	}
+}
+
+func MarkComplete(db *gorm.DB, w *sync.WaitGroup) {
+	defer w.Done()
+	var username string
+	var taskname string
+	var tasks Task
+	fmt.Println("Enter Username")
+	fmt.Scan(&username)
+	fmt.Println("Enter Taskname")
+	fmt.Scan(&taskname)
+	result := db.Where("User=? AND task_name=?", username, taskname).First(&tasks)
+	if result.RowsAffected > 0 {
+		db.Model(&tasks).Update("Completed", true)
+		fmt.Println("Task Completed Good job")
+	} else {
+		log.Error("Task cannot be mark as completed")
 	}
 }
