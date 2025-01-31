@@ -12,12 +12,13 @@ import (
 )
 
 type Task struct {
-	Id        int32     `gorm:"primarykey"`
-	User      string    `gorm:"not null"`
-	TaskName  string    `gorm:"column:task_name"`
-	Date      time.Time `gorm:"column:date"`
-	Completed bool      `gorm:"column:Completed"`
-	Priority  string    `gorm:"column:priority"`
+	Id        int32  `gorm:"primarykey"`
+	User      string `gorm:"not null"`
+	TaskName  string `gorm:"column:task_name"`
+	Date      string `gorm:"column:startdate"`
+	EndDate   string `gorm:"column:endDate"`
+	Completed bool   `gorm:"column:Completed"`
+	Priority  string `gorm:"column:priority"`
 }
 
 func initDB() *gorm.DB {
@@ -47,18 +48,23 @@ func AddFunc(db *gorm.DB, w *sync.WaitGroup) { //Adding task into the Database
 	var taskname string
 	var user string
 	var priority string
+	var endDate int
 	fmt.Println("Enter TaskName")
 	fmt.Scanln(&taskname)
 	fmt.Println("Enter username")
 	fmt.Scanln(&user)
 	fmt.Println("Set Priority (low/high)")
 	fmt.Scan(&priority)
-	date := time.Now()
+	fmt.Println("Enter End Date")
+	fmt.Scan(&endDate)
+	date := time.Now().Format("2006-01-02")
+	dueDate := time.Now().AddDate(0, 0, endDate).Format("2006-01-02")
 	task := Task{
 		User:      user,
 		TaskName:  taskname,
 		Date:      date,
 		Completed: false,
+		EndDate:   dueDate,
 		Priority:  priority,
 	}
 	result := db.Create(&task)
@@ -77,7 +83,7 @@ func Viewtask(db *gorm.DB, username string, w *sync.WaitGroup) {
 		}
 		fmt.Println("=== All Tasks ===")
 		for _, task := range tasks {
-			output := fmt.Sprintf("Username:= %v, TaskName:= %v, Completed:= %v, TaskPriority:= %v, Date:= %v", task.User, task.TaskName, task.Completed, task.Priority, task.Date)
+			output := fmt.Sprintf("Username:= %v, TaskName:= %v, Completed:= %v, TaskPriority:= %v, StartDate:= %v, EndDate:= %v", task.User, task.TaskName, task.Completed, task.Priority, task.Date, task.EndDate)
 			fmt.Println(output)
 		}
 	} else {
@@ -104,19 +110,20 @@ func Update(db *gorm.DB) {
 	}
 }
 
-func Deletetask(db *gorm.DB, todelId int) {
+func Deletetask(db *gorm.DB) {
 	var task Task
-
-	_ = db.First(&task, todelId)
-	//if err != nil {
-	//fmt.Println("Error in finding task")
-	//}
-	_ = db.Delete(&task)
-	//if err != nil {
-	//fmt.Println("Error in deleting the task")
-	//}
-	fmt.Println("Task deleted succesfully", task)
-
+	var username string
+	var taskname string
+	fmt.Println("Enter username")
+	fmt.Scan(&username)
+	fmt.Println("Enter taskname")
+	fmt.Scan(&taskname)
+	found := db.Where("User=? AND task_name=?", username, taskname).First(&task)
+	if found.RowsAffected > 0 {
+		db.Delete(&task)
+		fmt.Println("Task deleted succesfully", found)
+	}
+	log.Error("User or task name not found")
 }
 func Search(db *gorm.DB, taskname string) {
 	var task Task
@@ -136,13 +143,13 @@ func main() {
 	fmt.Println("Hello")
 	for {
 		fmt.Println("Enter your Choices...")
-		fmt.Println("1> Add task")
-		fmt.Println("2> View Task")
-		fmt.Println("3> Quit")
-		fmt.Println("4> Delete Task")
-		fmt.Println("5> Search Task")
-		fmt.Println("6> Update Exsisting task")
-		fmt.Println("7> Mark Task as Completed")
+		fmt.Println("1> ADD TASK")
+		fmt.Println("2> VIEW TASK")
+		fmt.Println("3> QUIT")
+		fmt.Println("4> DELETE TASK")
+		fmt.Println("5> SEARCH TASK")
+		fmt.Println("6> UPDATE EXSISTING TASK")
+		fmt.Println("7> MARK TASK AS COMPLETED")
 		var userInput string
 		fmt.Scanln(&userInput)
 		switch userInput {
@@ -158,10 +165,7 @@ func main() {
 		case "3":
 			os.Exit(0)
 		case "4":
-			var todel int
-			fmt.Println("Enter the task Id to delete")
-			fmt.Scan(&todel)
-			Deletetask(db, todel)
+			Deletetask(db)
 		case "5":
 			fmt.Println("Task you want to Search")
 			var taskname string
@@ -184,15 +188,15 @@ func MarkComplete(db *gorm.DB, w *sync.WaitGroup) {
 	var username string
 	var taskname string
 	var tasks Task
-	fmt.Println("Enter Username")
+	fmt.Println("enter username")
 	fmt.Scan(&username)
-	fmt.Println("Enter Taskname")
+	fmt.Println("enter taskname")
 	fmt.Scan(&taskname)
-	result := db.Where("User=? AND task_name=?", username, taskname).First(&tasks)
+	result := db.Where("user=? and task_name=?", username, taskname).First(&tasks)
 	if result.RowsAffected > 0 {
-		db.Model(&tasks).Update("Completed", true)
-		fmt.Println("Task Completed Good job")
+		db.Model(&tasks).Update("completed", true)
+		fmt.Println("task completed good job")
 	} else {
-		log.Error("Task cannot be mark as completed")
+		log.Error("task cannot be mark as completed")
 	}
 }
